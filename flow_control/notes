@@ -1,0 +1,5 @@
+nghttp -v -d 2GB.zip --cert myapp.pem  https://localhost:9090/test
+
+nghttp -v  --cert myapp.pem  https://localhost:9090/test
+
+curl -k --data-binary "@2GB.zip" https://localhost:9090/test
