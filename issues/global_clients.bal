@@ -17,67 +17,43 @@
 import ballerina/http;
 import ballerina/log;
 
-listener http:Listener ep1 = new(9097, config = { httpVersion: "2.0" });
-listener http:Listener ep2 = new(9098, config = { httpVersion: "2.0" });
+listener http:Listener ep1 = new(9230, config = { httpVersion: "2.0" });
+listener http:Listener ep2 = new(9231, config = { httpVersion: "2.0" });
 
-http:Client h1Client = new("http://localhost:9098", config = { httpVersion: "1.1", http2Settings: {
-        http2PriorKnowledge: false }, poolConfig: {}, cache : {enabled:false} });
+http:Client h2WithPriorKnowledge = new("http://localhost:9098", config = { httpVersion: "2.0", http2Settings: {
+        http2PriorKnowledge: true }, poolConfig: {} });
 
-//  http:Client h2WithPriorKnowledge = new("http://localhost:9098", config = { httpVersion: "2.0", http2Settings: {
-//         http2PriorKnowledge: true }, poolConfig: {} ,  cache : {enabled:false}});
-
-// http:Client h2WithoutPriorKnowledge = new("http://localhost:9098", config = { httpVersion: "2.0", http2Settings: {
-//         http2PriorKnowledge: false }, poolConfig: {}, cache : {enabled:false} });
+http:Client h1Client = new("http://localhost:9098", config = { httpVersion: "1.1", poolConfig: {}});
 
 @http:ServiceConfig {
-    basePath: "/priorKnowledge"
+    basePath: "/test"
 }
-service priorKnowledgeTest on ep1 {
-
-    // @http:ResourceConfig {
-    //     methods: ["GET"],
-    //     path: "/on"
-    // }
-    // resource function priorOn(http:Caller caller, http:Request req) {
-       
-    //     var response = h2WithPriorKnowledge->post("/backend", "Prior knowledge is enabled");
-    //     if (response is http:Response) {
-    //         checkpanic caller->respond(untaint response);
-    //     } else {
-    //         checkpanic caller->respond("Error in client post with prior knowledge on");
-    //     }
-    // }
-
-    // @http:ResourceConfig {
-    //     methods: ["GET"],
-    //     path: "/off"
-    // }
-    // resource function priorOff(http:Caller caller, http:Request req) {
-
-
-    //     var response = h2WithoutPriorKnowledge->post("/backend", "Prior knowledge is disabled");
-    //     if (response is http:Response) {
-    //         checkpanic caller->respond(untaint response);
-    //     } else {
-    //         checkpanic caller->respond("Error in client post with prior knowledge off");
-    //     }
-    //     // checkpanic caller->respond("Error in client post with prior knowledge off");
-    // }
+service globalClientTest on ep1 {
 
     @http:ResourceConfig {
         methods: ["GET"],
-        path: "/one"
+        path: "/h1"
     }
-    resource function h1Cli(http:Caller caller, http:Request req) {
-
-
+    resource function testH1Client(http:Caller caller, http:Request req) {
         var response = h1Client->post("/backend", "HTTP/1.1 request");
         if (response is http:Response) {
             checkpanic caller->respond(untaint response);
         } else {
-            checkpanic caller->respond("Error in client post with prior knowledge off");
+            checkpanic caller->respond("Error in client post - HTTP/1.1");
         }
-        // checkpanic caller->respond("Error in client post with prior knowledge off");
+    }
+
+    @http:ResourceConfig {
+        methods: ["GET"],
+        path: "/h2"
+    }
+    resource function testH2Client(http:Caller caller, http:Request req) {
+        var response = h2WithPriorKnowledge->post("/backend", "HTTP/2 with prior knowledge");
+        if (response is http:Response) {
+            checkpanic caller->respond(untaint response);
+        } else {
+            checkpanic caller->respond("Error in client post - HTTP/2");
+        }
     }
 }
 
@@ -99,9 +75,6 @@ service testBackEnd on ep2 {
         } else {
             outboundResponse = "Connection and upgrade headers are not present";
         }
-
-        log:printInfo(req.httpVersion);
-
         outboundResponse = outboundResponse + "--" + checkpanic req.getTextPayload() + req.httpVersion;
         checkpanic caller->respond(untaint outboundResponse);
     }
