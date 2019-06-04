@@ -14,7 +14,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-//Multiple global clients issue with SenderConfiguration
+//causes string in a json to be sent as text/plain instead of application/json
 
 import ballerina/http;
 import ballerina/log;
@@ -37,7 +37,8 @@ service globalClientTest on ep1 {
         path: "/h1"
     }
     resource function testH1Client(http:Caller caller, http:Request req) {
-        var response = h1Client->post("/backend", "HTTP/1.1 request");
+        json val = json.convert("hello");
+        var response = h1Client->post("/backend", val);
         if (response is http:Response) {
             checkpanic caller->respond(untaint response);
         } else {
@@ -70,6 +71,7 @@ service testBackEnd on ep2 {
     }
     resource function test(http:Caller caller, http:Request req) {
         string outboundResponse = "";
+        log:printInfo(req.getHeader("content-type"));
         if (req.hasHeader("connection") && req.hasHeader("upgrade")) {
             string[] connHeaders = req.getHeaders("connection");
             outboundResponse = connHeaders[1];
